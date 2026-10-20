@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Recipe — Flamme</title>
+<style>
+  /* Flamme "Noir" voice: true-neutral near-black, white ink, serif titles. */
+  body { font-family: Georgia, 'Times New Roman', serif; background: #0B0B0B; color: #E8E8E8;
+         max-width: 680px; margin: 0 auto; padding: 40px 22px 80px; line-height: 1.65; }
+  a { color: #E8A87C; }
+  .brand { text-align: center; color: #A9A9A9; font-size: 0.95rem; letter-spacing: 0.08em;
+           text-transform: uppercase; margin-bottom: 28px; }
+  .brand b { color: #F4F4F4; }
+  #photo { width: 100%; border-radius: 14px; display: none; margin-bottom: 20px; }
+  h1 { font-size: 2rem; color: #F4F4F4; line-height: 1.2; margin: 0 0 6px; }
+  .meta { color: #A9A9A9; font-style: italic; margin: 0 0 24px; }
+  h2 { font-size: 1.15rem; color: #F4F4F4; margin: 28px 0 8px; }
+  ul, ol { margin: 0; padding-left: 22px; }
+  li { margin: 6px 0; }
+  .nutrition p { margin: 4px 0; color: #C9C9C9; }
+  .source { margin-top: 24px; font-size: 0.95rem; color: #A9A9A9; }
+  .pitch { margin-top: 48px; padding: 20px 22px; border: 1px solid #2A2A2A; border-radius: 14px;
+           text-align: center; }
+  .pitch h2 { margin-top: 0; }
+  .pitch p { color: #C9C9C9; margin: 8px 0 0; }
+  .error { text-align: center; margin-top: 60px; color: #C9C9C9; }
+  .hidden { display: none; }
+  .open-app { text-align: center; margin: 0 0 28px; }
+  .open-app a { display: inline-block; background: #F4F4F4; color: #0B0B0B; text-decoration: none;
+                font-weight: bold; padding: 12px 28px; border-radius: 999px; }
+  .open-app-hint { font-size: 0.85rem; color: #A9A9A9; margin-top: 8px; }
+</style>
+</head>
+<body>
+<p class="brand">Shared with <b>Flamme</b></p>
+
+<div id="open-app" class="open-app hidden">
+  <a id="open-app-link" href="#">&#9654;&#xFE0E;&nbsp; Open in the Flamme app</a>
+  <p class="open-app-hint">Adds this recipe to your recipe box (needs Flamme installed)</p>
+</div>
+
+<div id="recipe" class="hidden">
+  <img id="photo" alt="">
+  <h1 id="name"></h1>
+  <p id="meta" class="meta"></p>
+  <div id="ingredients-wrap" class="hidden"><h2>Ingredients</h2><ul id="ingredients"></ul></div>
+  <div id="directions-wrap" class="hidden"><h2>Directions</h2><ol id="directions"></ol></div>
+  <div id="nutrition-wrap" class="nutrition hidden"><h2>Nutrition</h2><div id="nutrition"></div></div>
+  <p id="source" class="source hidden"></p>
+</div>
+
+<div id="error" class="error hidden"></div>
+
+<div class="pitch">
+  <h2>Flamme</h2>
+  <p>A personal recipe box, shopping list, and kitchen timing assistant for Android
+     by <a href="index.html">Hearthside Works</a>.</p>
+  <p>If Flamme is installed, this link opens right in the app and the recipe
+     imports itself. Flamme is coming to Google Play soon.</p>
+</div>
+
+<script>
+// The recipe lives ENTIRELY in this page's URL fragment (after the '#'):
+// compressed with deflate, written as base64url. Fragments are never sent to
+// the server, so the recipe stays between the sender and whoever they sent
+// it to. This mirrors src/utils/shareLink.js in the app.
+(function () {
+  'use strict';
+
+  var ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  var LOOKUP = {};
+  for (var i = 0; i < ALPHA.length; i++) LOOKUP[ALPHA[i]] = i;
+
+  function base64urlToBytes(text) {
+    var clean = (text || '').replace(/=+$/, '');
+    var len = clean.length;
+    if (len === 0) return null;
+    var out = new Uint8Array(Math.floor(len * 3 / 4));
+    var o = 0;
+    for (var i = 0; i < len; i += 4) {
+      var c0 = LOOKUP[clean[i]], c1 = LOOKUP[clean[i + 1]];
+      var c2 = i + 2 < len ? LOOKUP[clean[i + 2]] : undefined;
+      var c3 = i + 3 < len ? LOOKUP[clean[i + 3]] : undefined;
+      if (c0 === undefined || c1 === undefined) return null;
+      out[o++] = (c0 << 2) | (c1 >> 4);
+      if (c2 !== undefined) out[o++] = ((c1 & 15) << 4) | (c2 >> 2);
+      else if (i + 2 < len) return null;
+      if (c3 !== undefined) out[o++] = ((c2 & 3) << 6) | c3;
+      else if (i + 3 < len) return null;
+    }
+    return out;
+  }
+
+  function inflate(bytes) {
+    // Browsers ship the zip algorithm natively these days.
+    var stream = new Blob([bytes]).stream()
+      .pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Response(stream).text();
+  }
+
+  function isWebUrl(v) { return typeof v === 'string' && /^https?:\/\//i.test(v.trim()); }
+
+  function lines(text) {
+    return (typeof text === 'string' ? text : '').split('\n')
+      .map(function (l) { return l.replace(/^\s*\d+[.)]\s*/, '').trim(); })
+      .filter(function (l) { return l !== ''; });
+  }
+
+  function show(id) { document.getElementById(id).classList.remove('hidden'); }
+  function setText(id, text) { document.getElementById(id).textContent = text; }
+
+  function fail(message) {
+    setText('error', message);
+    show('error');
+  }
+
+  function render(r) {
+    // Everything is inserted with textContent — the link's content is
+    // untrusted, so it must never become HTML.
+    setText('name', r.name);
+    document.title = r.name + ' — Flamme';
+
+    var meta = [];
+    if (typeof r.genre === 'string' && r.genre.trim()) meta.push(r.genre.trim());
+    if (typeof r.protein === 'string' && r.protein.trim() &&
+        !/^(none|n\/?a|-+)$/i.test(r.protein.trim())) meta.push(r.protein.trim());
+    if (typeof r.totalMinutes === 'number' && r.totalMinutes > 0) meta.push(r.totalMinutes + ' min');
+    setText('meta', meta.join(' · '));
+
+    if (isWebUrl(r.image)) {
+      var img = document.getElementById('photo');
+      img.src = r.image.trim();
+      img.style.display = 'block';
+    }
+
+    var ing = lines(r.ingredients);
+    if (ing.length) {
+      var ul = document.getElementById('ingredients');
+      ing.forEach(function (l) {
+        var li = document.createElement('li');
+        li.textContent = l;
+        ul.appendChild(li);
+      });
+      show('ingredients-wrap');
+    }
+
+    var steps = lines(r.instructions);
+    if (steps.length) {
+      var ol = document.getElementById('directions');
+      steps.forEach(function (l) {
+        var li = document.createElement('li');
+        li.textContent = l;
+        ol.appendChild(li);
+      });
+      show('directions-wrap');
+    }
+
+    var nut = lines(r.nutrition);
+    if (nut.length) {
+      var box = document.getElementById('nutrition');
+      nut.forEach(function (l) {
+        var p = document.createElement('p');
+        p.textContent = l;
+        box.appendChild(p);
+      });
+      show('nutrition-wrap');
+    }
+
+    if (isWebUrl(r.sourceUrl)) {
+      var srcP = document.getElementById('source');
+      srcP.appendChild(document.createTextNode('Source: '));
+      var a = document.createElement('a');
+      a.href = r.sourceUrl.trim();
+      a.rel = 'noopener nofollow';
+      a.textContent = r.sourceUrl.trim();
+      srcP.appendChild(a);
+      show('source');
+    }
+
+    // In-app browsers (Discord, Instagram…) show this page instead of
+    // deep-linking into Flamme. This button is the escape hatch, in Android's
+    // intent:// format (plain flamme:// gets ignored by in-app browsers).
+    // Hard-won details, learned on Ruben's phone:
+    //   • scheme=https, NOT a custom scheme — Android's package-visibility
+    //     rules hide custom-scheme handlers from other apps (Discord "sees"
+    //     no Flamme → bounced to a dead Play Store page), but every browser
+    //     app is allowed to see https handlers. The explicit package= makes
+    //     Android open Flamme itself, even when link verification is off.
+    //   • the payload rides as ?d= (intent:// reserves the #fragment) — the
+    //     app accepts both spellings.
+    //   • browser_fallback_url returns no-Flamme users to this page instead
+    //     of the Play Store (Flamme isn't published there yet).
+    document.getElementById('open-app-link').href =
+      'intent://hearthsideworks-creator.github.io/r?d=' + fragment +
+      '#Intent;scheme=https;package=com.hearthsideworks.flamme' +
+      ';S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+    show('open-app');
+
+    show('recipe');
+  }
+
+  var fragment = location.hash ? location.hash.slice(1) : '';
+  if (!fragment) {
+    fail('This link has no recipe in it. Ask your friend to share it again from Flamme.');
+    return;
+  }
+  if (typeof DecompressionStream === 'undefined') {
+    fail('Your browser is too old to unpack this recipe — try opening the link in an up-to-date browser.');
+    return;
+  }
+  var bytes = base64urlToBytes(fragment);
+  if (!bytes) {
+    fail('This link looks damaged (part of it may not have been copied).');
+    return;
+  }
+  inflate(bytes).then(function (json) {
+    var envelope = JSON.parse(json);
+    if (!envelope || envelope.v !== 1 || !envelope.r ||
+        typeof envelope.r.name !== 'string' || envelope.r.name.trim() === '') {
+      throw new Error('bad envelope');
+    }
+    render(envelope.r);
+  }).catch(function () {
+    fail('This link looks damaged or incomplete — ask your friend to share it again.');
+  });
+})();
+</script>
+</body>
+</html>

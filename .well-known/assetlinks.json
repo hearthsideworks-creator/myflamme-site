@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.hearthsideworks.flamme",
+      "sha256_cert_fingerprints": [
+        "C7:4B:8F:2E:DD:D0:9B:34:8F:5B:25:F2:08:79:31:C1:A7:19:14:35:E6:65:5C:F6:18:92:95:F8:E7:84:59:A1"
+      ]
+    }
+  }
+]
