@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Locked down: scripts only from this site + the one pinned, hash-checked
+     supabase-js file; network only to Flamme's Supabase project. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; connect-src https://xljnustfjvvnillqnkpa.supabase.co; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>Flamme — Delete your account</title>
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; background: #0E0F12; color: #E8E8E8;
@@ -13,33 +17,68 @@
   strong { color: #F4F4F4; }
   a { color: #E8A87C; }
   ol li, ul li { margin-bottom: 6px; }
-  .note { border: 1px solid #2A2B30; border-radius: 12px; padding: 12px 16px; background: #15161A; }
+  .card { border: 1px solid #2A2B30; border-radius: 14px; padding: 18px 20px; background: #15161A; margin-top: 1.5em; }
+  .note { color: #A9A9A9; font-size: 0.95rem; }
+  button { font: inherit; font-size: 1rem; border-radius: 999px; padding: 10px 22px; cursor: pointer; border: 1px solid #3A3B40; background: #1E1F24; color: #F4F4F4; }
+  button.primary { background: #F4F4F4; color: #0E0F12; border-color: #F4F4F4; font-weight: bold; }
+  button.danger { background: #C0392B; border-color: #C0392B; color: #fff; font-weight: bold; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  input { font: inherit; font-size: 1rem; padding: 10px 14px; border-radius: 10px; border: 1px solid #3A3B40; background: #0E0F12; color: #F4F4F4; width: 12em; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  #error { color: #FF8A80; margin-top: 12px; }
+  .who { font-size: 1.2rem; color: #F4F4F4; }
 </style>
 </head>
 <body>
 <h1>Delete your Flamme account</h1>
 <p class="date">Flamme by Hearthside Works</p>
 
-<p>You can delete your Flamme account and everything you shared at any time.
-A Flamme account is optional: it's only used for following friends and
-sharing recipes with them.</p>
+<p>A Flamme account is optional - it's only used for following friends and
+sharing recipes with them. You can delete it, and everything you shared,
+yourself at any time.</p>
 
-<h2>Fastest: in the app</h2>
-<ol>
-  <li>Open Flamme and go to the <strong>Profile</strong> tab.</li>
-  <li>In the <strong>Account</strong> card, tap <strong>Delete account</strong>.</li>
-  <li>Confirm twice. Deletion happens right away.</li>
-</ol>
+<h2>In the app</h2>
+<p>Open Flamme, go to <strong>Profile</strong>, and in the <strong>Account</strong>
+card tap <strong>Delete account</strong>.</p>
 
-<h2>No longer have the app?</h2>
-<p>Email <a href="mailto:hearthside.works@gmail.com?subject=Delete%20my%20Flamme%20account">hearthside.works@gmail.com</a>
-with the subject <strong>"Delete my Flamme account"</strong>, and include your
-<strong>@handle</strong>. Send it from the Google account you signed in with, so
-we can confirm the account is yours. We'll delete it within 7 days and reply
-when it's done.</p>
-<p class="note">Flamme will never ask for your password - not in the app, not by
-email. Sign-in only ever happens on Google's own page or pop-up. If a message
-claiming to be Flamme asks for a password, it isn't us.</p>
+<h2>Or right here</h2>
+<div class="card">
+  <div id="step-busy">Checking…</div>
+
+  <div id="step-signin" hidden>
+    <p>Sign in with the Google account you use in Flamme. You'll see your
+    @handle and confirm before anything is deleted.</p>
+    <button id="signin" class="primary">Sign in with Google</button>
+  </div>
+
+  <div id="step-confirm" hidden>
+    <p>Signed in as <span class="who"><strong id="who-name"></strong> <span id="who-handle"></span></span></p>
+    <p>This permanently deletes everything listed below from Flamme's servers.
+    It can't be undone.</p>
+    <label for="confirm-text">Type <strong>DELETE</strong> to confirm:</label>
+    <div class="row">
+      <input id="confirm-text" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button id="delete" class="danger" disabled>Delete my account</button>
+      <button id="cancel">Cancel</button>
+    </div>
+  </div>
+
+  <div id="step-done" hidden>
+    <p><strong>Your Flamme account has been deleted.</strong> Everything you shared
+    is gone from our servers. Recipes saved on your phone are still there.</p>
+  </div>
+
+  <div id="step-none" hidden>
+    <p><strong>No Flamme account found</strong> for that Google account, so
+    there's nothing to delete. If you use Flamme with a different Google
+    account, reload this page and sign in with that one.</p>
+  </div>
+
+  <p id="error" hidden></p>
+</div>
+<p class="note">Flamme will never ask for your password - sign-in only ever
+happens on Google's own page. If a message claiming to be Flamme asks for a
+password, it isn't us.</p>
 
 <h2>What gets deleted</h2>
 <ul>
@@ -55,5 +94,10 @@ claiming to be Flamme asks for a password, it isn't us.</p>
 <p>Recipes saved on your phone are stored only on your phone, so they stay
 there until you delete them or uninstall the app. Recipes a friend chose to
 "save a copy" of are now theirs, in their own collection.</p>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"
+        integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK"
+        crossorigin="anonymous"></script>
+<script src="delete-account.js"></script>
 </body>
 </html>
