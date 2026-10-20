@@ -193,7 +193,7 @@
     //   • browser_fallback_url returns no-Flamme users to this page instead
     //     of the Play Store (Flamme isn't published there yet).
     document.getElementById('open-app-link').href =
-      'intent://hearthsideworks-creator.github.io/r?d=' + fragment +
+      'intent://myflamme.app/r?' + appQuery +
       '#Intent;scheme=https;package=com.hearthsideworks.flamme' +
       ';S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
     show('open-app');
@@ -201,7 +201,36 @@
     show('recipe');
   }
 
+  // ---- short links: myflamme.app/r/CODE (served via 404.html) or /r?c=CODE.
+  // The recipe is looked up with Flamme's PUBLIC key; the database only ever
+  // returns that one recipe, and nothing if the link was turned off.
+  var SUPABASE_URL = 'https://xljnustfjvvnillqnkpa.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_caykshDVKpXeV4z-ArSpmQ_AcvKGp4v';
+  var shortMatch = location.pathname.match(/^\/r\/([A-Za-z0-9_-]{12})\/?$/) ||
+                   location.search.match(/[?&]c=([A-Za-z0-9_-]{12})(?:&|$)/);
+  var appQuery = '';
+  if (shortMatch) {
+    var code = shortMatch[1];
+    appQuery = 'c=' + code;
+    fetch(SUPABASE_URL + '/rest/v1/rpc/get_shared_recipe', {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_code: code }),
+      referrerPolicy: 'no-referrer',
+    }).then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (r) {
+        if (!r || typeof r.name !== 'string' || r.name.trim() === '') {
+          fail('This link was turned off by the person who shared it, or it never existed.');
+          return;
+        }
+        render(r);
+      })
+      .catch(function () { fail("Couldn't load this recipe. Check your connection and try again."); });
+    return;
+  }
+
   var fragment = location.hash ? location.hash.slice(1) : '';
+  appQuery = 'd=' + fragment;
   if (!fragment) {
     fail('This link has no recipe in it. Ask your friend to share it again from Flamme.');
     return;
