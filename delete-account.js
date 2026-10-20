@@ -14,7 +14,8 @@
   var REDIRECT = 'https://myflamme.app/delete-account.html';
 
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true, autoRefreshToken: false },
+    // sessionStorage: the sign-in only lives as long as this browser tab
+    auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true, autoRefreshToken: false, storage: window.sessionStorage },
   });
 
   var $ = function (id) { return document.getElementById(id); };
