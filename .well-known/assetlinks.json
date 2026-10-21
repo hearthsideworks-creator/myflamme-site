@@ -1,11 +1,14 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.hearthsideworks.flamme",
       "sha256_cert_fingerprints": [
-        "C7:4B:8F:2E:DD:D0:9B:34:8F:5B:25:F2:08:79:31:C1:A7:19:14:35:E6:65:5C:F6:18:92:95:F8:E7:84:59:A1"
+        "C7:4B:8F:2E:DD:D0:9B:34:8F:5B:25:F2:08:79:31:C1:A7:19:14:35:E6:65:5C:F6:18:92:95:F8:E7:84:59:A1",
+        "C9:6B:CA:03:EE:C8:19:6F:70:43:35:1A:F5:C7:6D:72:CD:5B:11:CD:C1:13:5C:34:E1:53:CB:06:FF:A9:C4:BD"
       ]
     }
   }
